@@ -100,8 +100,6 @@ const CLIENT_ID = "126656790527-s6031tuf756kg3nr7k9gi73r5fiu1o5g.apps.googleuser
 const SCOPES = "https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file";
 const PARENT_FOLDER_ID = "1AjPI1N-7tBH1YpAcT5Q-_taN14IVGVRm";
 const GROQ_BASE = "https://api.groq.com/openai/v1";
-// Embedded default key (free-tier, rate-limited; encoded so repo secret scanners don't auto-revoke it).
-} catch(e){ return ""; } })();
 function getGroqKey(){ return localStorage.getItem("groq_key") || ""; }
 const $ = id => document.getElementById(id);
 let googleToken = null, audioBlob = null, audioName = "", selectedDoc = null;
