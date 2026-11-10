@@ -46,7 +46,7 @@ textarea{min-height:180px;resize:vertical;line-height:1.6}
   <div id="googleStatus" class="small">לא מחובר לגוגל</div>
   <button class="secondary" id="googleBtn">חיבור לחשבון גוגל</button>
   <div style="height:12px"></div>
-  <div id="groqStatus" class="small">מפתח Groq לא הוזן</div>
+  <div id="groqStatus" class="small">יש להזין מפתח Groq פרטי במכשיר זה</div>
   <div class="row">
     <input type="password" id="groqKey" placeholder="מפתח Groq API" style="flex:1">
     <button class="primary" id="saveKey" style="width:auto">שמור</button>
@@ -75,7 +75,9 @@ textarea{min-height:180px;resize:vertical;line-height:1.6}
 
 <div class="card hidden" id="previewCard">
   <h2><span class="step-num">3</span>תצוגה מקדימה - אפשר לערוך</h2>
-  <textarea id="summaryEdit"></textarea>
+  <textarea id="summaryEdit" autocomplete="off"></textarea>
+  <button class="secondary" id="clearSummaryBtn" type="button">ניקוי הסיכום מהמסך</button>
+  <div class="small">ניקוי זה מסיר את הסיכום מהמסך בלבד. הוא לא מוחק תוכן שכבר נשמר ב-Google Docs, את היסטוריית הגרסאות או את ההקלטה המקורית בטלפון.</div>
 </div>
 
 <div class="card hidden" id="docCard">
@@ -99,8 +101,8 @@ const SCOPES = "https://www.googleapis.com/auth/documents https://www.googleapis
 const PARENT_FOLDER_ID = "1AjPI1N-7tBH1YpAcT5Q-_taN14IVGVRm";
 const GROQ_BASE = "https://api.groq.com/openai/v1";
 // Embedded default key (free-tier, rate-limited; encoded so repo secret scanners don't auto-revoke it).
-const EMBEDDED_KEY = (() => { try { return atob(["Z3NrXzFlTUpSdWdTQ210","cFdhNHpuTlZRV0dkeWIzRllmd","XpDZGNwdklQNkwzemxqRW4wMmRvRmM="].join("")); } catch(e){ return ""; } })();
-function getGroqKey(){ return localStorage.getItem("groq_key") || EMBEDDED_KEY; }
+} catch(e){ return ""; } })();
+function getGroqKey(){ return localStorage.getItem("groq_key") || ""; }
 const $ = id => document.getElementById(id);
 let googleToken = null, audioBlob = null, audioName = "", selectedDoc = null;
 
@@ -118,7 +120,7 @@ function setGoogleStatus(){
 function setGroqStatus(){
   const has = !!getGroqKey();
   $("groqStatus").innerHTML = has
-    ? '<span class="ok">✔ מפתח Groq מוכן</span>' : 'מפתח Groq לא הוזן';
+    ? '<span class="ok">✔ מפתח Groq מוכן</span>' : 'יש להזין מפתח Groq פרטי במכשיר זה';
 }
 setGoogleStatus(); setGroqStatus();
 
@@ -320,6 +322,17 @@ function formatSummary(s, dateStr){
   t += (s.movement && s.movement.length) ? s.movement.map(x => "• " + x).join("\n") : "• לא צוין";
   return t;
 }
+
+/* ---------- Clear local summary preview ---------- */
+$("clearSummaryBtn").onclick = () => {
+  if(!confirm("לנקות את הסיכום מהמסך? תוכן שנשמר ב-Google Docs לא יימחק.")) return;
+  $("summaryEdit").value = "";
+  $("insertBtn").disabled = true;
+  $("previewCard").classList.add("hidden");
+  $("docCard").classList.add("hidden");
+  $("insertResult").textContent = "";
+  log("הסיכום נוקה מהמסך בלבד. עותק שנשמר ב-Google Docs לא נמחק.", "ok");
+};
 
 /* ---------- Doc picker ---------- */
 function escQ(x){ return x.replace(/'/g, "\\'"); }
