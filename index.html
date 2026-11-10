@@ -453,8 +453,13 @@ $("insertBtn").onclick = async () => {
       });
     }
     const link = "https://docs.google.com/document/d/" + selectedDoc.id + "/edit";
-    $("insertResult").innerHTML = '<span class="ok">✔ הסיכום נכנס לקובץ!</span> <a href="' + link + '" target="_blank" style="color:var(--accent)">פתח את הקובץ</a>';
-    log("הוכנס ל: " + selectedDoc.name, "ok");
+    // מחיקת ההקלטה מהאפליקציה מיד אחרי שהסיכום נכתב לקובץ
+    audioBlob = null; audioName = ""; recChunks = [];
+    $("fileInput").value = "";
+    $("audioInfo").innerHTML = "";
+    $("processBtn").disabled = true;
+    $("insertResult").innerHTML = '<span class="ok">✔ הסיכום נכנס לקובץ!</span> <a href="' + link + '" target="_blank" style="color:var(--accent)">פתח את הקובץ</a><br>🗑️ ההקלטה נמחקה מהאפליקציה. אם ייבאת אותה מהרשמקול - מחק גם את קובץ ההקלטה באפליקציית הרשמקול בטלפון.';
+    log("הוכנס ל: " + selectedDoc.name + " - ההקלטה נמחקה מהאפליקציה", "ok");
   }catch(e){
     $("insertResult").innerHTML = '<span class="err">שגיאה: ' + e.message + "</span>";
   }finally{
