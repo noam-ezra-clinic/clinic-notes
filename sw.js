@@ -1,5 +1,5 @@
-const CACHE = "clinic-notes-v1";
-const ASSETS = ["./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
+const CACHE = "clinic-notes-v3";
+const ASSETS = ["./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
@@ -8,5 +8,14 @@ self.addEventListener("activate", e => {
 });
 self.addEventListener("fetch", e => {
   if(e.request.method !== "GET" || !e.request.url.startsWith(self.location.origin)) return;
+  // Network-first for HTML/JS so app updates always reach the device; fall back to cache offline.
+  if(e.request.mode === "navigate" || e.request.url.endsWith(".html") || e.request.url.endsWith("/")){
+    e.respondWith(fetch(e.request).then(r => {
+      const copy = r.clone();
+      caches.open(CACHE).then(c => c.put(e.request, copy));
+      return r;
+    }).catch(() => caches.match(e.request)));
+    return;
+  }
   e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request)));
 });
