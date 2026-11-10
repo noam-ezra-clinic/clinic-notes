@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a3c34">
+<title>סיכומי פגישות</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{--bg:#0f1f1c;--card:#1a3c34;--accent:#d4a24e;--text:#f3efe7;--muted:#9db8ae;--danger:#c0392b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:16px}
+h1{font-size:1.4rem;margin-bottom:4px}
+.sub{color:var(--muted);font-size:.85rem;margin-bottom:16px}
+.card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.card h2{font-size:1.05rem;margin-bottom:10px;color:var(--accent)}
+button{font-family:inherit;font-size:1rem;border:none;border-radius:10px;padding:12px 18px;cursor:pointer;font-weight:600}
+.primary{background:var(--accent);color:#0f1f1c;width:100%}
+.secondary{background:transparent;color:var(--accent);border:1.5px solid var(--accent);width:100%;margin-top:8px}
+.danger{background:var(--danger);color:#fff;width:100%}
+button:disabled{opacity:.45;cursor:not-allowed}
+input[type=text],input[type=password],textarea{width:100%;background:#0f1f1c;border:1px solid #2e574c;border-radius:10px;color:var(--text);padding:12px;font-size:1rem;font-family:inherit}
+textarea{min-height:180px;resize:vertical;line-height:1.6}
+.row{display:flex;gap:8px;align-items:center}
+.small{font-size:.8rem;color:var(--muted);margin-top:6px;line-height:1.5}
+.ok{color:#7ed3a7}
+.err{color:#ff9b8a}
+#log{background:#0a1714;border-radius:10px;padding:10px;font-size:.8rem;max-height:160px;overflow-y:auto;margin-top:10px;display:none;white-space:pre-wrap;direction:ltr;text-align:left}
+.hidden{display:none!important}
+.doc-item{padding:12px;border:1px solid #2e574c;border-radius:10px;margin-bottom:8px;cursor:pointer}
+.doc-item.sel{border-color:var(--accent);background:#234c42}
+.doc-item .d{font-size:.78rem;color:var(--muted)}
+.rec{display:flex;align-items:center;gap:10px;justify-content:center;font-size:1.6rem;font-variant-numeric:tabular-nums}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--danger);animation:b 1s infinite}
+@keyframes b{50%{opacity:.3}}
+.step-num{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#0f1f1c;align-items:center;justify-content:center;font-size:.85rem;margin-left:8px}
+.warn{background:#3a2f17;border:1px solid #7a6420;border-radius:10px;padding:10px;font-size:.82rem;margin-top:8px;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>🩺 סיכומי פגישות</h1>
+<div class="sub">הקלטה ← תמלול ← סיכום ← גוגל דוק</div>
+
+<div class="card" id="setupCard">
+  <h2>הגדרות חד-פעמיות</h2>
+  <div id="googleStatus" class="small">לא מחובר לגוגל</div>
+  <button class="secondary" id="googleBtn">חיבור לחשבון גוגל</button>
+  <div style="height:12px"></div>
+  <div id="groqStatus" class="small">מפתח Groq לא הוזן</div>
+  <div class="row">
+    <input type="password" id="groqKey" placeholder="מפתח Groq API" style="flex:1">
+    <button class="primary" id="saveKey" style="width:auto">שמור</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2><span class="step-num">1</span>הקלטה</h2>
+  <input type="file" id="fileInput" accept="audio/*" class="hidden">
+  <button class="primary" id="importBtn">📂 ייבוא הקלטה מהטלפון (מומלץ)</button>
+  <div class="small">מקליטים ברשמקול של הטלפון (עובד גם כשהמסך כבוי), ואז מייבאים את הקובץ לכאן.</div>
+  <button class="secondary" id="recToggle">🎙️ הקלטה כאן באפליקציה</button>
+  <div class="warn hidden" id="recWarn">שים לב: בהקלטה בתוך האפליקציה המסך חייב להישאר דולק והאפליקציה פתוחה כל הזמן. להקלטה עם מסך כבוי - השתמש ברשמקול של הטלפון וייבא.</div>
+  <div id="recPanel" class="hidden" style="margin-top:10px">
+    <div class="rec"><div class="dot"></div><span id="recTime">00:00</span></div>
+    <button class="danger" id="stopRec" style="margin-top:10px">⏹️ עצור הקלטה</button>
+  </div>
+  <div id="audioInfo" class="small"></div>
+</div>
+
+<div class="card">
+  <h2><span class="step-num">2</span>עיבוד</h2>
+  <button class="primary" id="processBtn" disabled>⚙️ תמלל וסכם</button>
+  <div id="log"></div>
+</div>
+
+<div class="card hidden" id="previewCard">
+  <h2><span class="step-num">3</span>תצוגה מקדימה - אפשר לערוך</h2>
+  <textarea id="summaryEdit"></textarea>
+</div>
+
+<div class="card hidden" id="docCard">
+  <h2><span class="step-num">4</span>בחירת קובץ והכנסה</h2>
+  <div class="row">
+    <input type="text" id="docSearch" placeholder="חיפוש קובץ (למשל שם מטופל או מעקב טיפול)" style="flex:1">
+    <button class="primary" id="searchBtn" style="width:auto">חפש</button>
+  </div>
+  <div id="docList" style="margin-top:10px"></div>
+  <button class="primary" id="insertBtn" disabled>📥 הכנס סיכום לקובץ עם התאריך</button>
+  <div id="insertResult" class="small"></div>
+</div>
+
+<div id="logBottom"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+"use strict";
+const CLIENT_ID = "126656790527-s6031tuf756kg3nr7k9gi73r5fiu1o5g.apps.googleusercontent.com";
+const SCOPES = "https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.readonly";
+const GROQ_BASE = "https://api.groq.com/openai/v1";
+const $ = id => document.getElementById(id);
+let googleToken = null, audioBlob = null, audioName = "", selectedDoc = null;
+
+function log(msg, cls){
+  const el = $("log"); el.style.display = "block";
+  const d = document.createElement("div");
+  d.textContent = new Date().toLocaleTimeString("he-IL") + "  " + msg;
+  if(cls) d.className = cls;
+  el.appendChild(d); el.scrollTop = el.scrollHeight;
+}
+function setGoogleStatus(){
+  $("googleStatus").innerHTML = googleToken
+    ? '<span class="ok">✔ מחובר לגוגל</span>' : 'לא מחובר לגוגל';
+}
+function setGroqStatus(){
+  const has = !!localStorage.getItem("groq_key");
+  $("groqStatus").innerHTML = has
+    ? '<span class="ok">✔ מפתח Groq שמור במכשיר</span>' : 'מפתח Groq לא הוזן';
+}
+setGoogleStatus(); setGroqStatus();
+
+/* ---------- Google sign-in ---------- */
+let tokenClient = null;
+function initGoogle(){
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID, scope: SCOPES,
+    callback: (resp) => {
+      if(resp.error){ log("Google error: " + resp.error, "err"); return; }
+      googleToken = resp.access_token; setGoogleStatus();
+    }
+  });
+}
+$("googleBtn").onclick = () => {
+  if(!tokenClient){ if(window.google && google.accounts){ initGoogle(); } else { alert("ספריית גוגל עוד נטענת, נסה שוב בעוד שניה"); return; } }
+  tokenClient.requestAccessToken({prompt: googleToken ? "" : "consent"});
+};
+async function gfetch(url, opts = {}){
+  if(!googleToken){ throw new Error("לא מחובר לגוגל"); }
+  opts.headers = Object.assign({"Authorization": "Bearer " + googleToken}, opts.headers || {});
+  const r = await fetch(url, opts);
+  if(r.status === 401){ googleToken = null; setGoogleStatus(); throw new Error("פג תוקף החיבור לגוגל - התחבר שוב"); }
+  return r;
+}
+
+/* ---------- Groq key ---------- */
+$("saveKey").onclick = () => {
+  const k = $("groqKey").value.trim();
+  if(!k.startsWith("gsk_")){ alert("מפתח Groq מתחיל ב-gsk_"); return; }
+  localStorage.setItem("groq_key", k); $("groqKey").value = ""; setGroqStatus();
+};
+async function groqFetch(path, opts = {}){
+  const key = localStorage.getItem("groq_key");
+  if(!key) throw new Error("חסר מפתח Groq");
+  opts.headers = Object.assign({"Authorization": "Bearer " + key}, opts.headers || {});
+  const r = await fetch(GROQ_BASE + path, opts);
+  if(!r.ok){ const t = await r.text(); throw new Error("Groq " + r.status + ": " + t.slice(0,200)); }
+  return r;
+}
+
+/* ---------- Recording (in-app, optional) ---------- */
+let mediaRec = null, recChunks = [], recStart = 0, recTimer = null, wakeLock = null;
+$("recToggle").onclick = async () => {
+  $("recWarn").classList.remove("hidden");
+  if(mediaRec) return;
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+    try{ wakeLock = await navigator.wakeLock.request("screen"); }catch(e){}
+    const mime = ["audio/mp4","audio/webm;codecs=opus","audio/webm"].find(m => MediaRecorder.isTypeSupported(m)) || "";
+    mediaRec = new MediaRecorder(stream, mime ? {mimeType: mime} : {});
+    recChunks = [];
+    mediaRec.ondataavailable = e => { if(e.data.size) recChunks.push(e.data); };
+    mediaRec.onstop = () => {
+      clearInterval(recTimer);
+      stream.getTracks().forEach(t => t.stop());
+      if(wakeLock){ wakeLock.release(); wakeLock = null; }
+      const type = mediaRec.mimeType || "audio/webm";
+      const ext = type.includes("mp4") ? "m4a" : "webm";
+      setAudio(new Blob(recChunks, {type}), "recording-" + Date.now() + "." + ext);
+      mediaRec = null; $("recPanel").classList.add("hidden");
+    };
+    mediaRec.start(1000);
+    recStart = Date.now();
+    $("recPanel").classList.remove("hidden");
+    recTimer = setInterval(() => {
+      const s = Math.floor((Date.now() - recStart)/1000);
+      $("recTime").textContent = String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+    }, 500);
+  }catch(e){ alert("לא ניתן לגשת למיקרופון: " + e.message); }
+};
+$("stopRec").onclick = () => { if(mediaRec) mediaRec.stop(); };
+
+/* ---------- Import ---------- */
+$("importBtn").onclick = () => $("fileInput").click();
+$("fileInput").onchange = e => {
+  const f = e.target.files[0];
+  if(f) setAudio(f, f.name);
+};
+function setAudio(blob, name){
+  audioBlob = blob; audioName = name;
+  const mb = (blob.size/1048576).toFixed(1);
+  $("audioInfo").innerHTML = '<span class="ok">✔ ' + name + " (" + mb + ' מ"ב)</span>';
+  $("processBtn").disabled = false;
+}
+
+/* ---------- Audio -> WAV chunks ---------- */
+async function toMono16k(file){
+  const buf = await file.arrayBuffer();
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const decoded = await ctx.decodeAudioData(buf);
+  await ctx.close();
+  const sr = 16000;
+  const dur = decoded.duration;
+  const off = new OfflineAudioContext(1, Math.ceil(dur*sr), sr);
+  const src = off.createBufferSource(); src.buffer = decoded; src.connect(off.destination); src.start();
+  return await off.startRendering(); // AudioBuffer 16k mono
+}
+function wavEncode(abuf, startSec, endSec){
+  const sr = abuf.sampleRate, data = abuf.getChannelData(0);
+  const s0 = Math.floor(startSec*sr), s1 = Math.min(Math.floor(endSec*sr), data.length);
+  const n = s1 - s0;
+  const buf = new ArrayBuffer(44 + n*2), v = new DataView(buf);
+  const ws = (o, s) => { for(let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+  ws(0,"RIFF"); v.setUint32(4, 36+n*2, true); ws(8,"WAVE"); ws(12,"fmt ");
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+  ws(36,"data"); v.setUint32(40, n*2, true);
+  for(let i=0;i<n;i++){
+    let x = Math.max(-1, Math.min(1, data[s0+i]));
+    v.setInt16(44+i*2, x < 0 ? x*0x8000 : x*0x7FFF, true);
+  }
+  return new Blob([buf], {type: "audio/wav"});
+}
+
+/* ---------- Processing ---------- */
+const CHUNK_SEC = 600;
+$("processBtn").onclick = async () => {
+  if(!audioBlob) return;
+  $("processBtn").disabled = true;
+  try{
+    log("ממיר שמע ל-16kHz מונו...");
+    const abuf = await toMono16k(audioBlob);
+    const dur = abuf.duration;
+    log("אורך: " + Math.round(dur) + " שניות");
+    let fullText = "";
+    for(let s = 0; s < dur; s += CHUNK_SEC){
+      const e = Math.min(s + CHUNK_SEC, dur);
+      log("מתמלל קטע " + Math.round(s) + "-" + Math.round(e) + " שניות...");
+      const wav = wavEncode(abuf, s, e);
+      const fd = new FormData();
+      fd.append("file", wav, "chunk.wav");
+      fd.append("model", "whisper-large-v3-turbo");
+      fd.append("language", "he");
+      fd.append("response_format", "json");
+      fd.append("temperature", "0");
+      const r = await (await groqFetch("/audio/transcriptions", {method: "POST", body: fd})).json();
+      fullText += (r.text || "").trim() + "\n";
+      log("הקטע תומלל (" + (r.text||"").length + " תווים)");
+    }
+    log("מסכם...");
+    const summary = await summarize(fullText);
+    const dateStr = new Date().toLocaleDateString("he-IL", {timeZone: "Asia/Jerusalem", day:"2-digit", month:"2-digit", year:"numeric"});
+    const text = formatSummary(summary, dateStr);
+    $("summaryEdit").value = text;
+    $("previewCard").classList.remove("hidden");
+    $("docCard").classList.remove("hidden");
+    log("הסיכום מוכן ✔", "ok");
+    $("docCard").scrollIntoView({behavior: "smooth"});
+  }catch(e){
+    log("שגיאה: " + e.message, "err");
+    alert("שגיאה: " + e.message);
+  }finally{
+    $("processBtn").disabled = false;
+  }
+};
+
+async function llmCall(messages, maxTok){
+  const r = await groqFetch("/chat/completions", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages, temperature: 0.2, max_tokens: maxTok || 1500,
+      response_format: {type: "json_object"}
+    })
+  });
+  const j = await r.json();
+  return JSON.parse(j.choices[0].message.content);
+}
+const SYS = `אתה עוזר של מטפל ברפואה סינית. קיבלת תמלול של פגישה טיפולית עם מטופל. החזר JSON בלבד במבנה:
+{"summary": "סיכום קצר של הפגישה ב-3-5 משפטים, בעברית", "nutrition": ["המלצת תזונה 1", "..."], "movement": ["המלצת תנועה 1", "..."]}
+כללים: כתוב בעברית תקינה. nutrition = רק המלצות תזונה/שתייה/צמחי מרפא לשתייה שנאמרו בפגישה. movement = רק המלצות תנועה/הליכה/מתיחות/צי גונג שנאמרו. אם לא נאמרו המלצות מסוג מסוים - החזר מערך ריק. אל תמציא המלצות שלא נאמרו.`;
+async function summarize(transcript){
+  const pieces = [];
+  const MAX = 9000;
+  for(let i = 0; i < transcript.length; i += MAX) pieces.push(transcript.slice(i, i + MAX));
+  if(pieces.length === 1){
+    return await llmCall([{role: "system", content: SYS}, {role: "user", content: "תמלול:\n" + pieces[0]}]);
+  }
+  const partials = [];
+  for(let i = 0; i < pieces.length; i++){
+    log("סיכום חלקי " + (i+1) + "/" + pieces.length);
+    partials.push(await llmCall([{role: "system", content: SYS}, {role: "user", content: "זהו חלק " + (i+1) + " מתוך " + pieces.length + " של תמלול אחד:\n" + pieces[i]}]));
+  }
+  const merge = {summary: "", nutrition: [], movement: []};
+  for(const p of partials){
+    if(p.summary) merge.summary += (merge.summary ? " " : "") + p.summary;
+    merge.nutrition.push(...(p.nutrition || []));
+    merge.movement.push(...(p.movement || []));
+  }
+  return await llmCall([{role: "system", content: SYS + "\nעכשיו תקבל סיכומים חלקיים של אותה פגישה - מזג אותם לסיכום אחד קוהרנטי, בלי כפילויות."}, {role: "user", content: JSON.stringify(merge)}]);
+}
+function formatSummary(s, dateStr){
+  let t = "סיכום פגישה | " + dateStr + "\n\n" + (s.summary || "") + "\n";
+  t += "\nהמלצות תזונה\n";
+  t += (s.nutrition && s.nutrition.length) ? s.nutrition.map(x => "• " + x).join("\n") + "\n" : "• לא צוין\n";
+  t += "\nהמלצות תנועה\n";
+  t += (s.movement && s.movement.length) ? s.movement.map(x => "• " + x).join("\n") : "• לא צוין";
+  return t;
+}
+
+/* ---------- Doc picker ---------- */
+async function searchDocs(){
+  const q = $("docSearch").value.trim() || "מעקב טיפול";
+  const url = "https://www.googleapis.com/drive/v3/files?q=" + encodeURIComponent(
+    "mimeType='application/vnd.google-apps.document' and name contains '" + q.replace(/'/g, "\\'") + "' and trashed=false"
+  ) + "&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc&pageSize=15";
+  const r = await gfetch(url);
+  const j = await r.json();
+  const list = $("docList"); list.innerHTML = "";
+  if(!j.files || !j.files.length){ list.innerHTML = '<div class="small">לא נמצאו קבצים</div>'; return; }
+  for(const f of j.files){
+    const d = document.createElement("div");
+    d.className = "doc-item" + (selectedDoc && selectedDoc.id === f.id ? " sel" : "");
+    d.innerHTML = "<div>" + f.name + '</div><div class="d">עודכן: ' + new Date(f.modifiedTime).toLocaleDateString("he-IL") + "</div>";
+    d.onclick = () => {
+      selectedDoc = f;
+      [...list.children].forEach(c => c.classList.remove("sel"));
+      d.classList.add("sel");
+      $("insertBtn").disabled = false;
+    };
+    list.appendChild(d);
+  }
+}
+$("searchBtn").onclick = () => searchDocs().catch(e => alert(e.message));
+
+/* ---------- Insert into doc ---------- */
+$("insertBtn").onclick = async () => {
+  if(!selectedDoc) return;
+  $("insertBtn").disabled = true;
+  try{
+    const text = "\n" + $("summaryEdit").value + "\n";
+    const doc = await (await gfetch("https://docs.googleapis.com/v1/documents/" + selectedDoc.id)).json();
+    const endIndex = doc.body.content[doc.body.content.length - 1].endIndex;
+    const insertAt = endIndex - 1;
+    const resp = await gfetch("https://docs.googleapis.com/v1/documents/" + selectedDoc.id + ":batchUpdate", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({requests: [{insertText: {location: {index: insertAt}, text}}]})
+    });
+    if(!resp.ok) throw new Error("insert failed " + resp.status);
+    // style paragraphs RTL + headings
+    const doc2 = await (await gfetch("https://docs.googleapis.com/v1/documents/" + selectedDoc.id)).json();
+    const reqs = [];
+    for(const el of doc2.body.content){
+      if(!el.paragraph || el.startIndex == null || el.startIndex < insertAt) continue;
+      const ptext = el.paragraph.elements.map(e => e.textRun ? e.textRun.content : "").join("").trim();
+      const range = {startIndex: el.startIndex, endIndex: el.endIndex};
+      let style = {direction: "RIGHT_TO_LEFT"}, fields = "direction";
+      if(/^סיכום פגישה\s*\|/.test(ptext)){ style.namedStyleType = "HEADING_2"; fields = "namedStyleType,direction"; }
+      else if(ptext === "המלצות תזונה" || ptext === "המלצות תנועה"){ style.namedStyleType = "HEADING_3"; fields = "namedStyleType,direction"; }
+      reqs.push({updateParagraphStyle: {range, paragraphStyle: style, fields}});
+    }
+    if(reqs.length){
+      await gfetch("https://docs.googleapis.com/v1/documents/" + selectedDoc.id + ":batchUpdate", {
+        method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({requests: reqs})
+      });
+    }
+    const link = "https://docs.google.com/document/d/" + selectedDoc.id + "/edit";
+    $("insertResult").innerHTML = '<span class="ok">✔ הסיכום נכנס לקובץ!</span> <a href="' + link + '" target="_blank" style="color:var(--accent)">פתח את הקובץ</a>';
+    log("הוכנס ל: " + selectedDoc.name, "ok");
+  }catch(e){
+    $("insertResult").innerHTML = '<span class="err">שגיאה: ' + e.message + "</span>";
+  }finally{
+    $("insertBtn").disabled = false;
+  }
+};
+
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
+</script>
+</body>
+</html>
