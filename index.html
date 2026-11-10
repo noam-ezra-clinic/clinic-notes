@@ -127,14 +127,14 @@ function initGoogle(){
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID, scope: SCOPES,
     callback: (resp) => {
-      if(resp.error){ log("Google error: " + resp.error, "err"); return; }
-      googleToken = resp.access_token; setGoogleStatus();
+      if(resp.error){ log("Google error: " + resp.error + " " + (resp.error_description || ""), "err"); return; }
+      googleToken = resp.access_token; setGoogleStatus(); log("התקבל חיבור לגוגל", "ok");
     }
   });
 }
 $("googleBtn").onclick = () => {
   if(!tokenClient){ if(window.google && google.accounts){ initGoogle(); } else { alert("ספריית גוגל עוד נטענת, נסה שוב בעוד שניה"); return; } }
-  tokenClient.requestAccessToken({prompt: googleToken ? "" : "consent"});
+  tokenClient.requestAccessToken({prompt: ""});
 };
 async function gfetch(url, opts = {}){
   if(!googleToken){ throw new Error("לא מחובר לגוגל"); }
